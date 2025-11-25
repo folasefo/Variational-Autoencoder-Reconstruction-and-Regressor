@@ -51,25 +51,23 @@ seed_everything(config['exp_params']['manual_seed'], True)
 # 创建模型
 model = vae_models[config['model_params']['name']](**config['model_params'])
 
-# ====== 关键修改：加载预训练冻结模型 ======
 if pretrained_path and os.path.exists(pretrained_path):
     print(f"🚀 加载预训练冻结模型: {pretrained_path}")
     
     # 加载状态字典
     state_dict = torch.load(pretrained_path, map_location='cpu')
     
-    # 提取模型权重（可能包含'state_dict'键）
+    # 提取模型权重
     if 'state_dict' in state_dict:
         state_dict = state_dict['state_dict']
     
-    # 调整键名：去掉前缀（例如：'model.'）
     pretrained_dict = {}
     for k, v in state_dict.items():
         if k.startswith('model.'):
             k = k[6:]  # 去掉 'model.' 前缀
         pretrained_dict[k] = v
     
-    # 加载权重到当前模型（严格模式关闭）
+    # 加载权重到当前模型
     model.load_state_dict(pretrained_dict, strict=False)
     
     # 冻结指定模块
@@ -98,11 +96,9 @@ else:
 config['exp_params']['label_csv'] = config['data_params']['label_csv']
 config['exp_params']['bin_width'] = config['data_params'].get('bin_width', 0.1)
 config['exp_params']['max_z'] = config['data_params'].get('max_z', 0.7)
-# 这两个开关/强度也传一下（若 YAML 里没配，会用默认值）
 config['exp_params']['use_bin_loss_weight'] = config['exp_params'].get('use_bin_loss_weight', True)
 config['exp_params']['bin_weight_alpha']   = config['exp_params'].get('bin_weight_alpha', 0.5)
 
-# 创建实验
 experiment = VAEXperiment(model, config['exp_params'])
 
 data = VAEDataset(**config["data_params"], pin_memory=len(config['trainer_params']['gpus']) != 0)
@@ -186,8 +182,6 @@ class FreezeCallback(Callback):
         checkpoint = torch.load(ckpt_path, map_location='cpu')
         state_dict = checkpoint['state_dict']
         
-        # ====== 关键修复：处理状态字典键名 ======
-        # 创建新的状态字典，移除多余的键名
         new_state_dict = {}
         for k, v in state_dict.items():
             # 移除 'model.' 前缀
@@ -201,7 +195,7 @@ class FreezeCallback(Callback):
         # 创建新模型实例
         model = pl_module.model
         
-        # 加载权重（使用 strict=False 忽略不匹配的键）
+        # 加载权重
         model.load_state_dict(new_state_dict, strict=False)
         print("✅ 模型权重加载成功")
         
@@ -246,7 +240,7 @@ freeze_callback = FreezeCallback(
     save_frozen_model=save_frozen_model
 )
 
-# 关键修改：更新DDP策略以支持冻结参数
+# 更新DDP策略以支持冻结参数
 ddp_strategy = DDPStrategy(
     find_unused_parameters=True  # 允许未使用的参数
 )
@@ -261,7 +255,7 @@ runner = Trainer(
         freeze_callback
     ],
     strategy=ddp_strategy,
-    replace_sampler_ddp=False,   # ★ 关键：让我们在 DataModule 里传入的 WeightedRandomSampler 生效
+    replace_sampler_ddp=False,   
     **config['trainer_params']
 )
 
@@ -282,8 +276,7 @@ if hasattr(checkpoint_callback, 'best_model_path') and checkpoint_callback.best_
     if m_epoch:
         epoch = int(m_epoch.group(1))
     else:
-        # 对形如 "51-0.0011.ckpt" 的文件名，从 stem 抓取
-        stem = Path(best_model_filename).stem  # "51-0.0011"
+        stem = Path(best_model_filename).stem 
         parts = stem.split('-')
         if parts and parts[0].isdigit():
             epoch = int(parts[0])
@@ -294,11 +287,9 @@ if hasattr(checkpoint_callback, 'best_model_path') and checkpoint_callback.best_
     if m_loss:
         best_loss = float(m_loss.group(1))
     else:
-        # 对形如 "51-0.0011.ckpt"：取去后缀后的最后一段
         try:
             best_loss = float(Path(best_model_filename).stem.split('-')[-1])
         except Exception:
-            # 最后兜底
             best_loss = checkpoint_callback.best_model_score.item()
 
     print(f"\n{'='*50}")
