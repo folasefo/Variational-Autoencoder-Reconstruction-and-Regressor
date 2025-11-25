@@ -15,7 +15,6 @@ class VanillaVAE(BaseVAE):
                  latent_dim: int,
                  hidden_dims: List = None,
                  regressor_dims: List = [256, 128],
-                 # ===== 删除趋势正则化相关参数 =====
                  z_min: float = 0.0,
                  z_max: float = 0.7,
                  z0: float = 0.3161643944329,          # 开始增强高z的阈值
@@ -26,7 +25,7 @@ class VanillaVAE(BaseVAE):
                  weight_clamp_min: float = 0.6607841682826632,
                  weight_clamp_max: float = 10.732496869073254,
                  huber_delta_e: float = 0.013428681496104579,  # Huber作用于归一化残差的δ
-                 # lambda_trend: float = 0.0,    # 删除趋势正则系数
+                 # lambda_trend: float = 0.0,   
                  **kwargs) -> None:
         super(VanillaVAE, self).__init__()
 
@@ -34,7 +33,7 @@ class VanillaVAE(BaseVAE):
         if hidden_dims is None:
             hidden_dims = [32, 64, 128, 256, 512]
 
-        # 保存超参（删除lambda_trend）
+        # 保存超参
         self.z_min = float(z_min)
         self.z_max = float(z_max)
         self.z0 = float(z0)
@@ -45,7 +44,6 @@ class VanillaVAE(BaseVAE):
         self.weight_clamp_min = float(weight_clamp_min)
         self.weight_clamp_max = float(weight_clamp_max)
         self.huber_delta_e = float(huber_delta_e)
-        # self.lambda_trend = float(lambda_trend)  # 删除
 
         # 编码器部分
         self.encoder = self.build_encoder(in_channels, hidden_dims)
@@ -148,9 +146,6 @@ class VanillaVAE(BaseVAE):
         return [recons, x, mu, log_var, z_pred]
     
     def loss_function(self, *args, **kwargs) -> dict:
-        """
-        删除趋势正则化项后的损失函数
-        """
         recons = args[0]
         input  = args[1]
         mu     = args[2]
@@ -205,15 +200,11 @@ class VanillaVAE(BaseVAE):
         huber_loss = F.huber_loss(e, torch.zeros_like(e), delta=self.huber_delta_e, reduction='none')
         regression_loss = (huber_loss * weights).mean()
 
-        # --- 删除趋势正则化项 ---
-        # 原来的趋势正则化代码已删除
-
-        # --- total loss (删除趋势正则化项) ---
+        # --- total loss ---
         total_loss = (
             recon_weight * recon_loss
             + reg_weight * regression_loss
             + kld_weight  * kld_loss
-            # + self.lambda_trend * trend_penalty  # 删除此项
         )
 
         loss_dict = {
