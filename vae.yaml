@@ -1,0 +1,54 @@
+model_params:
+  name: 'VanillaVAE'
+  in_channels: 5
+  latent_dim: 64
+  hidden_dims: [32, 64, 128, 256, 512]
+  regressor_dims: [512, 256, 128, 64]  # 回归器层维度
+
+data_params:
+  data_path: "/nfs020/nis/wmee/sdss_file/samdatathree/traval_data"
+  label_csv: "/nfs020/nis/wmee/sdss_file/overall_label.csv"
+  train_batch_size: 64
+  val_batch_size: 64
+  #test_batch_size: 64
+  patch_size: 64
+  num_workers: 4
+  use_balanced_sampler: true     # 启用按 bin 的采样均衡
+  sampler_alpha: 0.5             # 采样均衡强度（频率负幂）
+  bin_width: 0.1
+  max_z: 0.7
+  use_balanced_sampler: true 
+
+exp_params:
+  LR: 0.00041759541121788964
+  weight_decay: 0.000000197
+  scheduler_gamma: 0.95
+  kld_weight: 0.000001022
+  recon_weight: 0.005
+  reg_weight: 0.995
+  use_bin_loss_weight: true      # 启用 loss 中的 bin 权重
+  bin_weight_alpha: 0.5  
+  manual_seed: 1265
+
+trainer_params:
+  gpus: [0]
+  max_epochs: 300
+
+early_stop_params:
+  monitor: "val_sigma_NMAD"       # 监控验证集loss
+  min_delta: 0.0001         # 最小变化量
+  patience: 15             # 等待周期数
+  verbose: true             # 显示早停信息
+  mode: "min"               # 最小化模式
+
+pretrain_params:
+  checkpoint_path: "/nfs020/nis/wmee/sdss_file/edition_2/log_iceloss/VanillaVAE/version_4/checkpoints/frozen_epoch=11-val_loss=0.0102.ckpt"
+
+freeze_params:
+  freeze_encoder: true      # 是否冻结编码器
+  freeze_decoder: true     # 是否冻结解码器
+  save_frozen_model: false   # 是否保存冻结状态模型
+
+logging_params:
+  save_dir: "/nfs020/nis/wmee/sdss_file/edition_2/log_traval"
+  name: "vae"
