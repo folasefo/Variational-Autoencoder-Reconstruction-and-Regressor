@@ -67,8 +67,7 @@ class MyDataset(Dataset):
     def __getitem__(self, idx: int):
         img_path = self.imgs[idx]
         img = tifffile.imread(img_path).astype(np.float32)
-
-        # 如果是单通道 (H, W)，让它有一个 channel 维度 (H, W, 1)
+        
         if img.ndim == 2:
             img = img[:, :, None]
 
@@ -78,7 +77,6 @@ class MyDataset(Dataset):
             transformed = self.transform(image=img)
             img = transformed["image"]  # (C, H, W) torch.float32
 
-        # 预训练阶段不需要 z，但我们仍返回（便于之后微调/监控）
         return img, torch.tensor(z, dtype=torch.float32), torch.tensor(z_err, dtype=torch.float32)
 
 
@@ -97,9 +95,7 @@ class VAEDataset(pl.LightningDataModule):
         oversample_max_ratio: float = 25.0,
         epoch_len_factor: float = 1.0,
         use_oversample: bool = True,
-        # >>> 新增：兼容 configs/vae.yaml 里的旧键 <<<
         use_balanced_sampler: Optional[bool] = None,
-        # >>> 新增：吞掉以后可能出现的其它键，避免再报 unexpected kwarg <<<
         **kwargs,
     ):
         super().__init__()
@@ -153,7 +149,6 @@ class VAEDataset(pl.LightningDataModule):
 
     def _build_weights(self) -> torch.Tensor:
         z = torch.tensor(self.train_dataset.z_values, dtype=torch.float32)
-        # 你的全量分箱：0.0-0.1, ..., 0.6-0.7
         edges = torch.tensor([0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7], dtype=torch.float32)
 
         bins = torch.bucketize(z, edges, right=False) - 1
@@ -180,7 +175,7 @@ class VAEDataset(pl.LightningDataModule):
             return DataLoader(
                 self.train_dataset,
                 batch_size=self.train_batch_size,
-                sampler=sampler,       # 用 sampler 时不要 shuffle
+                sampler=sampler,      
                 shuffle=False,
                 num_workers=self.num_workers,
                 pin_memory=self.pin_memory,
