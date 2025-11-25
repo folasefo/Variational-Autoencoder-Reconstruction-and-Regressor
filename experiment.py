@@ -16,7 +16,7 @@ class VAEXperiment(pl.LightningModule):
         self.params = params
         self.curr_device = None
         self.hold_graph = False
-        self.validation_outputs = []  # 存储所有验证批次的输出
+        self.validation_outputs = []  
         
         try:
             self.hold_graph = self.params['retain_first_backpass']
@@ -132,7 +132,7 @@ class VAEXperiment(pl.LightningModule):
         print(f"Validation σNMAD: {sigma_NMAD:.4f}, MAE: {mae:.4f}")
         
         # 采样并保存图像 - 只保存一个批次
-        if self.trainer.is_global_zero:  # 只在主进程执行，避免多GPU重复保存
+        if self.trainer.is_global_zero:  
             self.sample_images()
             
         # 在返回值中添加sigma_NMAD
@@ -159,7 +159,7 @@ class VAEXperiment(pl.LightningModule):
                 test_input[:, c, :, :].unsqueeze(1),  # 输入图像的当前通道
                 recons[:, c, :, :].unsqueeze(1),  # 重建图像的当前通道
                 residual[:, c, :, :].unsqueeze(1)  # 残差图像的当前通道
-            ], dim=0)  # 在 batch 维度拼接
+            ], dim=0)  
 
             compar_path = os.path.join(compar_dir, f"channel_{c}.png")
             vutils.save_image(compar, compar_path, normalize=True, nrow=test_input.shape[0])
